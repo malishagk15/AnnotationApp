@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Labeling App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        h1 {
+            text-align: center;
+        }
+        form {
+            text-align: center;
+            margin: 20px;
+        }
+        #frame_container {
+            text-align: center;
+            margin: 20px;
+        }
+        #frame_canvas {
+            border: 1px solid #ccc;
+        }
+        input[type="text"] {
+            padding: 5px;
+            margin: 5px;
+        }
+        button {
+            padding: 10px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        a {
+            display: block;
+            text-align: center;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Video Labeling App</h1>
+    <form action="/upload" method="POST" enctype="multipart/form-data">
+        <input type="file" name="video_file">
+        <input type="submit" value="Upload Video">
+    </form>
+    <div id="frame_container">
+        <canvas id="frame_canvas" width="640" height="480"></canvas>
+        <p id="frame_name"></p> <!-- Add a paragraph element for frame name -->
+    </div>
+    <!-- <form id="label_form" method="POST">
+        <input type="text" name="frame_label" placeholder="Enter Label">
+        <input type="hidden" id="frame_index" name="frame_index" value="">
+        <button type="button" id="label_frame_button">Label Frame</button>
+    </form> -->
+    <form id="label_form" method="POST">
+        <select name="frame_label">
+            <option value="tennis bat swing">Tennis Bat Swing</option>
+            <option value="side kick">Side Kick</option>
+            <option value="kicking something">Kicking Something</option>
+            <option value="butt kicks">Butt Kicks</option>
+            <option value="punch/slap">Punch/Slap</option>
+            <option value="kicking">Kicking</option>
+            <option value="pushing">Pushing</option>
+            <option value="hit with object">Hit with Object</option>
+            <option value="wield knife">Wield Knife</option>
+            <option value="shoot with gun">Shoot with Gun</option>
+            <option value="falling down">Falling Down</option>
+            <option value="walking towards">Walking Towards</option>
+            <option value="walking apart">Walking Apart</option>
+            <option value="sit down">Sit Down</option>
+        </select>
+        <input type="hidden" id="frame_index" name="frame_index" value="">
+        <button type="button" id="label_frame_button">Label Frame</button>
+    </form>
+    <button id="next_frame">Next Frame</button>
+    <button id="prev_frame">Previous Frame</button>
+    <a href="/download_csv">Download CSV</a>
+    <script>
+        var frameIndex = 0;
+        var frameNames = {{ frame_names | tojson }};
+        
+        function loadFrame() {
+            var frameCanvas = document.getElementById('frame_canvas');
+            var frameName = frameNames[frameIndex];
+
+            // Set the value of the hidden field to the frameIndex
+            document.getElementById('frame_index').value = frameIndex;
+    
+            if (frameName) {
+                var xhr = new XMLHttpRequest();
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState === 4 && xhr.status === 200) {
+                        var img = new Image();
+                        img.src = URL.createObjectURL(xhr.response);
+                        img.onload = function () {
+                            // Resize canvas to half size
+                            frameCanvas.width = img.width / 2;
+                            frameCanvas.height = img.height / 2;
+    
+                            var ctx = frameCanvas.getContext('2d');
+    
+                            // Draw the resized frame
+                            ctx.drawImage(img, 0, 0, img.width / 2, img.height / 2);
+
+                            // Display the frame name
+                            document.getElementById('frame_name').textContent = frameName;
+                        };
+                    }
+                };
+                xhr.open('GET', '/get_frame?frame_name=' + frameName, true);
+                xhr.responseType = 'blob';
+                xhr.send();
+            }
+        }
+    
+        loadFrame();
+    
+        document.getElementById('next_frame').addEventListener('click', function () {
+            frameIndex = Math.min(frameIndex + 1, frameNames.length - 1);
+            loadFrame();
+        });
+    
+        document.getElementById('prev_frame').addEventListener('click', function () {
+            frameIndex = Math.max(frameIndex - 1, 0);
+            loadFrame();
+        });
+
+        // Add an event listener for the "Label Frame" button
+        document.getElementById('label_frame_button').addEventListener('click', function () {
+            // Create a FormData object from the label_form
+            var formData = new FormData(document.getElementById('label_form'));
+            
+            // Send a POST request to the /label route with the form data
+            var xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    // After labeling, move to the next frame
+                    frameIndex = Math.min(frameIndex + 1, frameNames.length - 1);
+                    loadFrame();
+                }
+            };
+            xhr.open('POST', '/label', true);
+            xhr.send(formData);
+        });
+    </script>
+</body>
+</html>
